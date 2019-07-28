@@ -1,3 +1,4 @@
+
 local component = require("component")
 local computer = require("computer")
 local shell = require("shell")
@@ -5,12 +6,21 @@ local keyboard = require("keyboard")
 local note = require("note")
 
 local args, options = shell.parse(...)
+local help_msg = [[
+Where the tracks are the numbers of the tracks to actually play.
+-i : Only parse and show track info, don't play.
+
+--speed : Speed multiplier when playing
+--frequency : Frequency multiplier for notes when playing
+]]
 if #args < 1 then
-  print("Usage: midi [-i] <filename> [track1 [track2 [...]]]")
-  print("Where the tracks are the numbers of the tracks to actually play.")
-  print(" -i: only parse and show track info, don't play.")
+  print("Usage: midi [options] <filename> [track1 [track2 [...]]]")
+  print(help_msg)
   return
 end
+
+local speed = tonumber(options.speed) or 1.0
+local frequency = tonumber(options.frequency) or 1.0
 
 -- Implements the essentials for MIDI file parsing, references:
 -- http://www.recordingblogs.com/sa/tabid/88/Default.aspx?topic=Musical+Instrument+Digital+Interface+(MIDI)
@@ -31,7 +41,7 @@ for address in component.list("note_block") do
 end
 if #instruments == 0 then
   local function beepableFrequency(midiCode)
-    local freq = note.freq(midiCode)
+    local freq = note.freq(midiCode) * frequency
     if freq <= 0 then error("Nonpositive frequency") end
     -- shift it by octaves so we at least get the right pitch
     while freq < 20 do freq = freq * 2 end
@@ -119,14 +129,14 @@ if time.division == "tpb" then
   time.tpb = bit32.band(0x7FFF, delta)
   time.mspb = 500000
   function time.tick()
-    return time.mspb / time.tpb
+    return time.mspb / time.tpb / speed
   end
   print(string.format("Time division is in %d ticks per beat.", time.tpb))
 else
   time.fps = bit32.band(0x7F00, delta)
   time.tpf = bit32.band(0x00FF, delta)
   function time.tick()
-    return 1000000 / (time.fps * time.tpf)
+    return 1000000 / (time.fps * time.tpf) / speed
   end
   print(string.format("Time division is in %d frames per second with %d ticks per frame.", time.fps, time.tpf))
 end
