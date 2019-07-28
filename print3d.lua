@@ -148,5 +148,6 @@ end
 
 for i, v in ipairs(args) do
   printData(readData(v))
+end
 
 
